@@ -1,0 +1,32 @@
+{
+  "name": "node-red-icom",
+  "version": "0.0.1",
+  "description": "ICOM Radio Control and Monitoring Nodes",
+  "keywords": [
+    "node-red",
+    "radio", "ham radio", "amateur radio",
+		"icom", "ci-v", "ic-705"
+  ],
+	"author": "Stephen Houser, N1SH <n1sh@arrl.net>",
+	"repository": "github:stephenhouser/node-red-icom",
+	"license": "MIT",
+	"homepage": "https://github.com/stephenhouser/node-red-icom",
+	"bugs": {
+		"url": "https://github.com/stephenhouser/node-red-icom/issues"
+	},
+	"main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "npx eslint --fix . || exit 0"
+  },
+  "dependencies": {
+    "@n1sh/icom-ci-v": "^0.0.1",
+    "@n1sh/icom-network": "^0.0.1"
+  },
+  "node-red": {
+    "nodes": {
+      "ci-v-decode": "ci-v-decode.js",
+      "ci-v-encode": "ci-v-encode.js"
+    }
+  }
+}

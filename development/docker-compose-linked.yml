@@ -1,0 +1,17 @@
+version: "3.7"
+
+services:
+    node-red:
+        image: nodered/node-red:latest-minimal
+        network_mode: "host"
+        environment:
+            - TZ=EST5EDT
+        ports:
+            - "1880:1880/tcp"
+            - "2237:2237/udp"
+            - "9229:9229"
+        volumes:
+            - ./data-linked:/data
+            - ../packages/node-red-icom:/data/node_modules/@n1sh/node-red-icom
+            - ../packages/icom-network:/data/node_modules/@n1sh/icom-network
+            - ../packages/icom-ci-v:/data/node_modules/@n1sh/icom-ci-v

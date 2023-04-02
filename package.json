@@ -1,0 +1,26 @@
+{
+	"name": "@n1sh/node-red-icom",
+	"description": "ICOM CI-V Protocol Decoding and Encoding",
+	"keywords": [
+		"radio",
+		"ham radio",
+		"amateur radio",
+		"icom",
+		"ci-v",
+		"ic-705"
+	],
+	"author": "Stephen Houser, N1SH <n1sh@arrl.net>",
+	"repository": "github:stephenhouser/node-red-icom",
+	"license": "MIT",
+	"homepage": "https://github.com/stephenhouser/node-red-icom",
+	"bugs": {
+		"url": "https://github.com/stephenhouser/node-red-icom/issues"
+	},
+	"private": true,
+	"workspaces": [
+		"packages/*"
+	],
+	"devDependencies": {
+		"lerna": "^6.6.1"
+	}
+}
