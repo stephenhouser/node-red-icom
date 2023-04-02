@@ -1,5 +1,5 @@
 /* ci-v-parser.js -- ICOM CI-V Protocol Parser/Encoder
- * 
+ *
  * 2023/04/02 Stephen Houser, MIT License
  */
 
