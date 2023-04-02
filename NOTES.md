@@ -14,7 +14,37 @@
 - [ICOM CI-V Document v3.2 (2002)](http://www.w4cll.com/info/ICOM/CI-V/CI-V%20manual.pdf)
 
 
+## Problems
+
+Invalid CI-V commands from host (wfview) to radio in `ic-705-20230323.pcapng`
+```
+# Datagram #26:10.1.10.186 -> 10.1.10.71 flags [d] UDP UDP 41504->50002 len 30 (0x16) Serial Channel payload len=6 (0x6)
+{
+  length: 22,
+  type_code: 0,
+  sequence: 1,
+  sender: { port: 41504, id: 2746 },
+  receiver: { port: 46327, id: 6648 },
+  payload: { id: 192, length: 1, sequence: 0, payload: <Buffer 04> },
+  type: 'data'
+}
+
+# Datagram #14475:10.1.10.186 -> 10.1.10.71 flags [d] UDP UDP 41504->50002 len 30 (0x16) Serial Channel payload len=6 (0x6)
+{
+  length: 22,
+  type_code: 0,
+  sequence: 852,
+  sender: { port: 41504, id: 2746 },
+  receiver: { port: 46327, id: 6648 },
+  payload: { id: 192, length: 1, sequence: 21251, payload: <Buffer 00> },
+  type: 'data'
+}
+
+```
 ## Notes
+
+
+
 
 ```
 WiFI:

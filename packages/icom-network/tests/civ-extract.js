@@ -1,4 +1,5 @@
-// read packets from pcap file and run parser against them.
+// Extract CI-V commands from packet capture (one-off)
+// dump to terminal for redirection and use in CI-V testing. 
 
 const pcap = require('pcap');
 const hexy = require("hexy");
@@ -39,71 +40,41 @@ function skip_port(datagram) {
 			!match_port(datagram, program.opts().audio);
 }
 
+
+
+function buf2hex(buffer) { // buffer is an ArrayBuffer
+	return [...new Uint8Array(buffer)]
+		.map(x => x.toString(16).padStart(2, '0'))
+		.join(' ');
+  }
+
 async function test_packet(datagram, packet) {
 	if (skip_port(datagram)) {
 		return;
 	}
 
-	print(`# ${yellow}Datagram #${packet_n}${normal}:${packet.payload.payload} (0x${datagram.data.length.toString(16)}) `);
-	if (program.opts().debug) {
-		print('\n');
-		print(hexy.hexy(datagram.data, {prefix: '# '}));
-		print('# ');
-	}	
-	
 	try {
 		const decoded = icnet.decode(datagram.data);
 		if (ignore_types.includes(decoded.type)) {
 			return;
 		}
 
-		// Control channel
-		if (match_port(datagram, program.opts().control)) {
-			print(`${yellow}Control Channel${normal}`);
-			if (decoded.payload) {
-				print(` payload len=${decoded.payload.length} (0x${decoded.payload.length.toString(16)})`);
-
-				const control_decoded = iccontrol.decode(decoded.payload);
-				if (ignore_types.includes(control_decoded.type)) {
-					return;
-				}
-
-				decoded.payload = control_decoded;
-			}
-		}
-
 		// Serial channel
 		if (match_port(datagram, program.opts().serial)) {
-			print(`${yellow}Serial Channel${normal}`);
 			if (decoded.payload) {
-				print(` payload len=${decoded.payload.length} (0x${decoded.payload.length.toString(16)})`);
-
 				const serial_decoded = icserial.decode(decoded.payload);
 				if (ignore_types.includes(serial_decoded.command)) {
 					return;
 				}
 
 				decoded.payload = serial_decoded;
+				if (decoded.payload.payload) {
+					print(buf2hex(decoded.payload.payload));
+					print('\n');
+				}
 			}
 		}
 
-		// TODO: Audio channel
-		if (match_port(datagram, program.opts().audio)) {
-			print(`${yellow}Audio Channel${normal}`);
-			if (decoded.payload) {
-				print(` payload len=${decoded.payload.length} (0x${decoded.payload.length.toString(16)})`);
-				// const audio_decoded = icaudio.decode(decoded.payload);
-				// if (ignore_types.includes(_decoded.command)) {
-				// 	return;
-				// }
-				// 
-				// decoded.payload = audio_decoded;
-			}
-		}
-
-		print('\n');
-		print(decoded);
-		print('\n\n');
 	} catch (err) {
 		console.log(`ERROR: could not parse packet #${packet_n}`);
 		console.log(err);
