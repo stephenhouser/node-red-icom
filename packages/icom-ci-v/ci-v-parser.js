@@ -1,5 +1,11 @@
+/* ci-v-parser.js -- ICOM CI-V Protocol Parser/Encoder
+ * 
+ * 2023/04/02 Stephen Houser, MIT License
+ */
+
 const binaryParser = require('binary-parser').Parser;
-const binaryEncoder = require('binary-parser-encoder').Parser;
+// TODO: Implement encoding of net-transport
+// const binaryEncoder = require('binary-parser-encoder').Parser;
 
 // returns key for enum value
 function keyForValue(enumType, value) {
