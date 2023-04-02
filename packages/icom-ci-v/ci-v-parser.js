@@ -34,7 +34,7 @@ function bcdFormatter(buffer) {
 	return freq_str;
 }
 
-class IcomCIVParser {
+class ICOMCIVParser {
 	constructor() {
 	}
 
@@ -108,46 +108,31 @@ class IcomCIVParser {
     }
 
     decode(buffer) {
-        if (!buffer) {
-			throw new Error('No buffer given to decode');
+		if (!buffer || buffer.length == 0) {
+			return {};
+			// throw new Error('No buffer given to decode');
 		}
+	
+		const decoded = this.parser.decode(buffer);
+		decoded.command = keyForValue(this.commandType, decoded.command_code);
+	
+		// Clean up the '_' properties, they are temporary
+		const remove_keys = Object.keys(decoded).filter(function(key) {
+			return key.startsWith('_');
+		});
 
-		return this.parser.parse(buffer);
+		for (let k = 0; k < remove_keys.length; k++) {			
+			delete decoded[remove_keys[k]];
+		};
+	
+		return decoded;
     }
 }
 
-// Public: Decode a Buffer of data into an object
-// with keys and values representing the parsed data.
-function decode(buffer) {
-	if (buffer.length == 0) {
-		return {'command': 'idle'};
-	}
-
-	const parser = new IcomCIVParser();
-	const decoded = parser.decode(buffer);
-    decoded.command = keyForValue(parser.commandType, decoded.command_code);
-
-	// Clean up the '_' properties, they are temporary
-	const remove_keys = Object.keys(decoded).filter(function(key) {
-		return key.startsWith('_');
-	});
-	for (let k = 0; k < remove_keys.length; k++) {			
-		delete decoded[remove_keys[k]];
-	};
-
-	return decoded;
-}
-
-// Public: Enocde object to a buffer
-// Returns a Buffer on success or a string error message.
-// Check the return type!
-function encode(msg) {
-	const encoder = new IcomCIVParser();
-	const encoded = encoder.encode(msg);
-	return encoded;
-}
-
 module.exports = {
-	decode: decode,
-	encode: encode
+	// Decode a Buffer of data into an object with keys and values representing the parsed data.
+	decode: (buffer) => new ICOMCIVParser().decode(buffer),
+	
+	// Encode an object to a Buffer, returns a Buffer on success or a string error message.
+	encode: (msg) => new ICOMCIVParser().encode(msg),
 };

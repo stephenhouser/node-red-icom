@@ -1,23 +1,29 @@
-const binaryParser = require('binary-parser').Parser;
-const binaryEncoder = require('binary-parser-encoder').Parser;
+/* net-control-parser.js -- ICOM Network Control Channel Parser
+ *
+ * This layer of the protocol maintains a connection/session with
+ * peers on the network. The protocol uses the underlying network
+ * transport layer (net-transport-parser.js) to maintain psuedo connections
+ * to the network.
+ * 
+ * This layer includes sequence codes and authentication for
+ *
+ * The protocol contains control messages and data identified
+ * by the "type" field at this layer.
+ * 
+ *  Byte
+ *  0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
+ * +---------------+-------+-------+-------+-------+-------------
+ * | code | res | seq | token | cap | mac         │ type  │ seq   │ src   │ dst   │ payload...
+ * +---------------+-------+-------+-------+-------+-------------
+ *
+ * Data is stored in little-endian format.
+ * 
+ * 2023/04/02 Stephen Houser, MIT License
+ */
 
-// Utility function to print out objects.
-// safely handles circular references
-JSON.safeStringify = (obj, indent = 2) => {
-	let cache = [];
-	const retVal = JSON.stringify(
-		obj,
-		(key, value) =>
-			typeof value === "object" && value !== null
-				? cache.includes(value)
-					? undefined // Duplicate reference found, discard key
-					: cache.push(value) && value // Store value in our collection
-				: value,
-		indent
-	);
-	cache = null;
-	return retVal;
-};
+const binaryParser = require('binary-parser').Parser;
+// TODO: Implement encoding of net-transport
+// const binaryEncoder = require('binary-parser-encoder').Parser;
 
 // returns key for enum value
 function keyForValue(enumType, value) {
@@ -36,6 +42,7 @@ function valueForKey(enumType, key) {
 	return enumType.hasOwnProperty(under_key) ? enumType[under_key] : null;
 }
 
+// encryption function for encoding username and password
 function encrypt(cleartext) {
 	const encryptKey = [
 		0x47, 0x5d, 0x4c, 0x42, 0x66, 0x20, 0x23, 0x46,
@@ -59,6 +66,7 @@ function encrypt(cleartext) {
 	return crypt.join('');
 }
 
+// decryption function for decoding username and password
 function decrypt(ciphertext) {
 	const decryptKey = [
 		0x25, 0x3e, 0x74, 0x26, 0x6c, 0x6a, 0x6d, 0x4e,
@@ -82,22 +90,13 @@ function decrypt(ciphertext) {
 	return clear.join('');
 }
 
+// stringify a uint32 into dotted decimal; 'a.b.c.d'
 function ipAddressFormatter(ip) {
 	return [ip >> 24 & 0xFF, ip >> 16 & 0xFF, ip >> 8 & 0x0ff, ip & 0xff].join('.')
 
 }
 
-// formats a parsed string for regular use
-function stringFormatter(s) {
-	return s.string.replace(/^\s+|\s+$/g, '');
-}
-
-// format a number for JavaScript
-function numberFormatter(n) {
-	const n_string = stringFormatter(n);
-	return isNaN(n_string) ? n_string : Number(n_string);
-}
-
+// format guid array for easy reading, standard format
 function guidFormatter(guid) {
 	const gstr = guid.map(e => e.toString(16).padStart(2, '0')).join('')
 	return gstr.slice(0, 8) + '-' + 
@@ -105,41 +104,23 @@ function guidFormatter(guid) {
 			gstr.slice(20)
 }
 
-// control channel, maintains connected (authenticated) session
-
-/*
- * This layer of the protocol maintains a connection/session with a
- * peer on the network. The protocol uses the underlying network
- * The datagrams include sequence codes and authentication
- *
- * The protocol contains control messages and data identified
- * by the "type" field at this layer.
- * 
- *  Byte
- *  0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
- * +---------------+-------+-------+-------+-------+-------------
- * | code | res | seq | token | cap | mac         │ type  │ seq   │ src   │ dst   │ data...
- * +---------------+-------+-------+-------+-------+-------------
- *
- * Data is stored in little-endian format.
- * 
- * 
- */
-class IcomNetControlParser {
+class ICOMNetControlParser {
 	constructor() {
 	}
 
+	// control channel command types
 	commandType = {
 		request: 		0x01,
 		response:		0x02,
 		status:			0x03
 	};
 
+	// control channel requests
 	requestType = {
 		login:			0x00,
 		logout:			0x01,
 		capabilities:	0x02,
-		connection:		0x03
+		connection:		0x03,
 	};
 
 	loginRequestParser = new binaryParser()		// -> 0x80 bytes
@@ -266,7 +247,7 @@ class IcomNetControlParser {
 		.array('_unknown_status3', { type: 'uint8', length: 8 })
 		;
 
-
+	// the main parser for control channel messages
 	parser = new binaryParser()
 		.endianess('big')
 		.array('_unknown_b1', { type: 'uint8', length: 2 })
@@ -289,57 +270,44 @@ class IcomNetControlParser {
 		;
 
     encode(msg) {
+		console.log('ERROR: Encoding not implemented.');
     }
 
     decode(buffer) {
-        if (!buffer) {
-			throw new Error('No buffer given to decode');
+		if (!buffer || buffer.length == 0) {
+			return {};
+			// throw new Error('No buffer given to decode');
 		}
 
-		return this.parser.parse(buffer);
+		const decoded = this.parser.parse(buffer);
+		// add stringified version of the datagram type to the returned message
+		decoded.type = keyForValue(this.commandType, decoded.type_code);
+
+		if (decoded.type != 'status') {
+			// add stringified version of the datagram request to the returned message
+			decoded.request = keyForValue(this.requestType, decoded.request_code);
+		} else {
+			// fix up as status messages do not have a valid 'request'
+			delete decoded.request;
+		}
+		
+		// Clean up the '_' properties, they are unknown or temporary
+		const remove_keys = Object.keys(decoded).filter(function(key) {
+			return key.startsWith('_');
+		});
+		
+		for (let k = 0; k < remove_keys.length; k++) {			
+			delete decoded[remove_keys[k]];
+		};
+
+		return decoded;
     }
 }
 
-// Public: Decode a Buffer of data (from a UDP datagram) into an object
-// with keys and values representing the parsed data.
-function decode(buffer) {
-	if (buffer.length == 0) {
-		return {'type': 'idle'};
-	}
-
-	const parser = new IcomNetControlParser();
-	const decoded = parser.decode(buffer);
-    // decoded.type_str = keyForValue(parser.messageType, decoded.type);
-    decoded.type = keyForValue(parser.commandType, decoded.type_code);
-
-	// fix up that status messages do not have a valid 'request'
-	if (decoded.type != 'status') {
-    	decoded.request = keyForValue(parser.requestType, decoded.request_code);
-	} else {
-		delete decoded.request;
-	}
-	
-	// Clean up the '_' properties, they are temporary
-	const remove_keys = Object.keys(decoded).filter(function(key) {
-		return key.startsWith('_');
-	});
-	for (let k = 0; k < remove_keys.length; k++) {			
-		delete decoded[remove_keys[k]];
-	};
-
-	return decoded;
-}
-
-// Public: Enocde object to a UDP-ready buffer
-// Returns a Buffer on success or a string error message.
-// Check the return type!
-function encode(msg) {
-	const encoder = new IcomNetControlParser();
-	const encoded = encoder.encode(msg);
-	return encoded;
-}
-
 module.exports = {
-	decode: decode,
-	encode: encode
+	// Decode a Buffer of data into an object with keys and values representing the parsed data.
+	decode: (buffer) => new ICOMNetControlParser().decode(buffer),
+
+	// Encode an object to a Buffer, returns a Buffer on success or a string error message.
+	encode: (msg) => new ICOMNetControlParser().encode(msg),
 };

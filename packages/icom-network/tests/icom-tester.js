@@ -3,21 +3,51 @@
 const pcap = require('pcap');
 const hexy = require("hexy");
 const { program } = require('commander');
+const util = require('node:util');
 
 const icnet = require('../net-transport-parser');
 const iccontrol = require('../net-control-parser');
-const icciv = require('../net-serial-parser');
+const icserial = require('../net-serial-parser');
 
 // current packet being processed.
 let packet_n = 0;
 
-const ignore_types = ['ping', 'scope-waveform', 'idle', 'send-frequency'];
+const ignore_types = [];
+
+const red = '\033[31;1;4m';
+const blue = '\033[94;1;4m';
+const green = '\033[31;1;4m';
+const normal = '\033[m';
+const yellow = '\033[93;1;4m';
+
+
+function print(msg) {
+	if (typeof(msg) == 'object') {
+		msg = util.format(msg);
+	}
+	process.stdout.write(msg);
+}
+
+function match_port(datagram, port) {
+	return datagram.sport == port || datagram.dport == port;
+}
+
+// set any port to 0 to "hide" it
+function skip_port(datagram) {
+	return !match_port(datagram, program.opts().control) &&
+			!match_port(datagram, program.opts().serial) &&
+			!match_port(datagram, program.opts().audio);
+}
 
 async function test_packet(datagram, packet) {
-	console.log(`\nPacket #${packet_n}: ${packet.payload.payload} (0x${datagram.data.length.toString(16)})`);
-	if (program.opts().debug) {
-		console.log(hexy.hexy(datagram.data));
+	if (skip_port(datagram)) {
+		return;
 	}
+
+	print(`# ${yellow}Datagram #${packet_n}${normal}:${packet.payload.payload} (0x${datagram.data.length.toString(16)}) `);
+	if (program.opts().debug) {
+		print(hexy.hexy(datagram.data));
+	}	
 	
 	try {
 		const decoded = icnet.decode(datagram.data);
@@ -26,43 +56,52 @@ async function test_packet(datagram, packet) {
 		}
 
 		// Control channel
-		if (decoded.type == 'data' && (datagram.sport == 50001 || datagram.dport == 50001)) {
-			console.log(`Control Channel: size=${decoded.data.length} (${decoded.data.length.toString(16)})`);
+		if (match_port(datagram, program.opts().control)) {
+			print(`${yellow}Control Channel${normal}`);
+			if (decoded.payload) {
+				print(` payload len=${decoded.payload.length} (0x${decoded.payload.length.toString(16)})`);
 
-			const control_decoded = iccontrol.decode(decoded.data);
-			if (ignore_types.includes(control_decoded.type)) {
-				return;
+				const control_decoded = iccontrol.decode(decoded.payload);
+				if (ignore_types.includes(control_decoded.type)) {
+					return;
+				}
+
+				decoded.payload = control_decoded;
 			}
-
-			decoded.payload = control_decoded;
 		}
 
 		// Serial channel
-		if (decoded.type == 'data' && (datagram.sport == 50002 || datagram.dport == 50002)) {
-			console.log(`CI-V Channel: size=${decoded.data.length} (${decoded.data.length.toString(16)})`);
+		if (match_port(datagram, program.opts().serial)) {
+			print(`${yellow}Serial Channel${normal}`);
+			if (decoded.payload) {
+				print(` payload len=${decoded.payload.length} (0x${decoded.payload.length.toString(16)})`);
 
-			const civ_decoded = icciv.decode(decoded.data);
-			if (ignore_types.includes(civ_decoded.command)) {
-				return;
+				const serial_decoded = icserial.decode(decoded.payload);
+				if (ignore_types.includes(serial_decoded.command)) {
+					return;
+				}
+
+				decoded.payload = serial_decoded;
 			}
-
-			decoded.payload = civ_decoded;
 		}
 
 		// TODO: Audio channel
-		if (decoded.type == 'data' && (datagram.sport == 50003 || datagram.dport == 50003)) {
-			console.log(`Audio Channel: size=${decoded.data.length} (${decoded.data.length.toString(16)})`);
-			return;
-
-			// const audio_decoded = icaudio.decode(decoded.data);
-			// if (ignore_types.includes(_decoded.command)) {
-			// 	return;
-			// }
-			// 
-			// decoded.payload = audio_decoded;
+		if (match_port(datagram, program.opts().audio)) {
+			print(`${yellow}Audio Channel${normal}`);
+			if (decoded.payload) {
+				print(` payload len=${decoded.payload.length} (0x${decoded.payload.length.toString(16)})`);
+				// const audio_decoded = icaudio.decode(decoded.payload);
+				// if (ignore_types.includes(_decoded.command)) {
+				// 	return;
+				// }
+				// 
+				// decoded.payload = audio_decoded;
+			}
 		}
 
-		console.log(decoded);
+		print('\n');
+		print(decoded);
+		print('\n\n');
 	} catch (err) {
 		console.log(`ERROR: could not parse packet #${packet_n}`);
 		console.log(err);
@@ -130,6 +169,9 @@ program
   .option('-s, --start <value>', 'starting packet number', '0')
   .option('-e, --end <value>', 'ending packet number', '100000000')
   .option('-o, --one <value>', 'dump a single packet', '0')
+  .option('--control <value>', 'control port', '50001')
+  .option('--serial <value>', 'serial/civ port', '50002')
+  .option('--audio <value>', 'audio port', '50003')
   .argument('<files...>', 'pcap trace files to process')
   .action(function(files) {
 	let start = parseInt(this.opts().start);
