@@ -6,6 +6,7 @@
 const binaryParser = require('binary-parser').Parser;
 // TODO: Implement encoding of net-transport
 // const binaryEncoder = require('binary-parser-encoder').Parser;
+const hexy = require("hexy");
 
 // returns key for enum value
 function keyForValue(enumType, value) {
@@ -51,25 +52,6 @@ function optionalUint8Formatter(buffer) {
 
 	return parseInt(buffer[0]);
 }
-
-const command_map = {
-	0x00: ['send-frequency'],
-	0x01: ['send-mode-data'],
-	0x02: ['read-band-edge'],
-	0x03: ['read-operating-frequency'],
-	0x04: ['read-operating-mode'],
-	0x05: ['set-operating-frequency'],
-	0x06: ['set-operating-mode'],
-	0x07: ['select-vfo-mode', {
-		0x00: ['select-vfo-a'],
-		0x01: ['select-vfo-b'],
-		0xa0: ['equalize-vfo-a-b'],
-		0xb0: ['echange-vfo-a-b']
-		}],
-	0x08: ['select-memory-mode', {
-		0xa0: ['select-memory-group']
-	}]
-};
 
 
 class ICOMCIVParser {
@@ -222,9 +204,145 @@ class ICOMCIVParser {
     }
 }
 
+function empty_decoder(buffer) {
+	if (!buffer || buffer.length == 0) {
+		return {};
+	}
+
+	return { payload: buffer };
+}
+
+const command_tree = {
+	0x00: ['send-frequency', empty_decoder],
+	0x01: ['send-mode-data', empty_decoder],
+	0x02: ['read-band-edge', empty_decoder],
+	0x03: ['read-operating-frequency', empty_decoder],
+	0x04: ['read-operating-mode', empty_decoder],
+	0x05: ['set-operating-frequency', empty_decoder],
+	0x06: ['set-operating-mode', empty_decoder],
+	0x07: ['select-vfo-mode', {
+		0x00: ['select-vfo-a', empty_decoder],
+		0x01: ['select-vfo-b', empty_decoder],
+		0xa0: ['equalize-vfo-a-b', empty_decoder],
+		0xb0: ['echange-vfo-a-b', empty_decoder]
+		}],
+	0x08: ['select-memory-mode', {
+		0xa0: ['select-memory-group', empty_decoder]
+	}],
+	0x15: ['read_0x15', {
+		0x01: ['read-s-meter-squelch', empty_decoder],
+		0x02: ['read-s-meter-level', empty_decoder],
+		0x05: ['read-various-squelch', empty_decoder],
+		0x07: ['read-overflow-status', empty_decoder],
+		0x11: ['read-po-level', empty_decoder],
+		0x12: ['read-swr-level', empty_decoder],
+		0x13: ['read-alc-level', empty_decoder],
+		0x14: ['read-comp-level', empty_decoder],
+		0x15: ['read-vd-level', empty_decoder],
+		0x16: ['read-id-level', empty_decoder],
+	}],
+	0x18: ['power', {
+		0x00: ['power-off', empty_decoder],
+		0x01: ['power-on', empty_decoder]
+	}],
+	0x19: ['read-transceiver-id', empty_decoder],
+	0x1a: ['read_0x1a', {
+		0x00: ['send-read-memory', empty_decoder],
+		0x01: ['send-read-memory', empty_decoder],
+		0x02: ['send-read-memory', empty_decoder],
+		0x03: ['send-read-memory', empty_decoder],
+		0x04: ['send-read-memory', empty_decoder],
+		0x05: ['send-read-memory', empty_decoder],
+	}],
+	0x27: ['scope-waveform', empty_decoder]
+};
+
+function merge_keys(dest, other) {
+	for (let key in other) {
+		if (key == 'command_code' && 'command_code' in dest) {
+			command_code = dest['command_code'] << 8 | other['command_code'] & 0xff;
+			dest['command_code'] = command_code;
+		} else {
+			dest[key] = other[key];
+		}
+	}
+
+	return dest;
+}
+
+/* Earlier version
+function command_decoder1(buffer) {
+	const decoded = {};
+
+	decoded.command_code = buffer.readUint8(0);
+	if (decoded.command_code in command_map) {
+		let [command, command_action] = command_map[decoded.command_code];
+		if (typeof(command_action) != 'function') {
+			const subcommand_map = command_action;
+			
+			decoded.subcommand_code = buffer.readUint8(1);
+			if (decoded.subcommand_code in subcommand_map) {
+				[command, command_action] = subcommand_map[decoded.subcommand_code];
+			}
+		}
+
+		decoded.command = command;
+		merge_keys(decoded, command_action(buffer.slice(2)));
+	}
+
+	return decoded;
+}
+*/
+
+// TODO: how to keep subcommand code with recursive
+function command_decoder(buffer, command_tree) {
+	const decoded = {};
+
+	decoded.command_code = buffer.readUint8(0);
+	const payload = buffer.slice(1);
+	if (decoded.command_code in command_tree) {
+		let [command, action] = command_tree[decoded.command_code];
+
+		if (typeof(action) === 'function') {
+			decoded.command = command;
+			merge_keys(decoded, action(payload));
+		} else {
+			merge_keys(decoded, command_decoder(payload, action));
+		}
+	}
+
+	return decoded;
+}
+
+function brute_decoder(buffer) {
+	if (!buffer || buffer.length < 6) {
+		// must have at least: header, destination, source, command, trailer
+		return decoded;
+	}
+
+	if (buffer.readUint16LE(0, true) != 0xfefe) {
+		// invalid header
+		return {};
+	}
+
+	if (buffer.readUint8((buffer.length - 1), true) != 0xfd) {
+		// invalid trailer
+		return {};
+	}
+
+	const decoded = {};
+	decoded.destination = buffer.readUint8(2);
+	decoded.source = buffer.readUint8(3);
+	const payload = buffer.slice(4, (buffer.length - 1));
+	merge_keys(decoded, command_decoder(payload, command_tree));
+	return decoded;
+}
+
+
 module.exports = {
 	// Decode a Buffer of data into an object with keys and values representing the parsed data.
-	decode: (buffer) => new ICOMCIVParser().decode(buffer),
+	// decode: (buffer) => new ICOMCIVParser().decode(buffer),
+	decode: brute_decoder,
 	
 	// Encode an object to a Buffer, returns a Buffer on success or a string error message.
 	encode: (msg) => new ICOMCIVParser().encode(msg),
