@@ -264,23 +264,19 @@ function command_decoder(buffer) {
 	let decoded = {};
 	let command_tree = civ_command_tree;
 	let command_code = 0;
-	let command_index = 0;
+	let buffer_idx = 0;
 
-	let local_command_code = buffer.readUint8(command_index++);
+	let local_command_code = buffer.readUint8(buffer_idx++);
 	while (local_command_code in command_tree) {
 		command_code = command_code << 8 | local_command_code & 0xff;
 
 		[command_name, action] = command_tree[local_command_code];
-		if (!action) {
-			// no decoder for this command, use empty_decoder
-			decoded = empty_decoder(buffer.slice(command_index));
-			decoded.command = command_name;
-			break;
+		if (!action) { // no decoder given for command, use empty_decoder
+			action = empty_decoder;
 		}
 
 		if (typeof(action) == 'function') {
-			// use found decoder
-			decoded = action(buffer.slice(command_index), command_tree[local_command_code]);
+			decoded = action(buffer.slice(buffer_idx), command_tree[local_command_code]);
 			decoded.command = command_name;
 			break;
 		}
@@ -288,7 +284,7 @@ function command_decoder(buffer) {
 		// action was another dictionary/object, keep looking for 
 		// a decoder function down the parse tree
 		command_tree = action;
-		local_command_code = buffer.readUint8(command_index++);
+		local_command_code = buffer.readUint8(buffer_idx++);
 	}
 
 	// if we did not find a decoder, use default empty_decoder
