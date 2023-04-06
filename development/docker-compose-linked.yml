@@ -6,10 +6,15 @@ services:
         network_mode: "host"
         environment:
             - TZ=EST5EDT
+        group_add:
+            - "986"
         ports:
             - "1880:1880/tcp"
             - "2237:2237/udp"
             - "9229:9229"
+        devices:
+            - /dev/ttyACM0:/dev/ttyACM0
+            - /dev/ttyACM1:/dev/ttyACM1
         volumes:
             - ./data-linked:/data
             - ../packages/node-red-icom:/data/node_modules/@n1sh/node-red-icom

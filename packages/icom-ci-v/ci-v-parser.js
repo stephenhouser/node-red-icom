@@ -113,6 +113,27 @@ function tone_frequency_decoder(buffer, action) {
 
 	return obj;
 }
+
+// command 01, 04, 06
+function mode_decoder(buffer, action) {
+	const modes = {	00: 'lsb',	01: 'usb',	02:	'am', 	03: 'cw',
+					04: 'rtty',	05: 'fm',	06: 'wfm',	07:	'cw-r',
+					08: 'rtty-r', 17: 'dv'};
+	const filters = [null, 'filter-1', 'filter-2', 'filter-3'];
+
+	const obj = {}
+	if (buffer && buffer.length) {
+		const mode = buffer.readUint8(0);
+		if (mode in modes) {
+			obj['mode'] = modes[mode];
+		}
+
+		const filter = buffer.readUint8(1);
+		obj['filter'] = filters[filter];
+	}
+	
+	return obj;
+}
  
 function empty_decoder(buffer, action) {
 	if (!buffer || buffer.length == 0) {
@@ -124,12 +145,12 @@ function empty_decoder(buffer, action) {
 
 const civ_command_tree = {
 	0x00: ['send-frequency', frequency_decoder],
-	0x01: ['send-mode-data'],
+	0x01: ['send-mode-data', mode_decoder],
 	0x02: ['read-band-edge'],
 	0x03: ['read-operating-frequency', frequency_decoder],
-	0x04: ['read-operating-mode'],
+	0x04: ['read-operating-mode', mode_decoder],
 	0x05: ['set-operating-frequency'],
-	0x06: ['set-operating-mode'],
+	0x06: ['set-operating-mode', mode_decoder],
 	0x07: ['select-vfo-mode', {
 		0x00: ['select-vfo-a'],
 		0x01: ['select-vfo-b'],
