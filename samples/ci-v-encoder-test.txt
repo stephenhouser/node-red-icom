@@ -1,7 +1,7 @@
 { "payload": "00a400" }
 { "payload": "e1a400" }
-{ "source": 0xe1, "destination": 0xa4, "payload": "00" }
-{ "source": 0x00, "destination": 0x00, "command_code": 0x00 }
-{ "source": 0xa4, "destination": 0xe1, "command_code": "03" }
-{ "source": 0x00, "destination": 0xe1, "command_code": "19", "payload": "00" }
-{ "source": 0x00, "destination": 0xe1, "command_code": "send-frequency" }
+{ "source": "0x01", "destination": "0x02", "payload": "00" }
+{ "source": "0x01", "destination": "0x02", "command_code": "0x00" }
+{ "source": "0xa4", "destination": "0x02", "command_code": "03" }
+{ "source": "0x01", "destination": 2, "command_code": "19", "payload": "00" }
+{ "source": 1, "destination": "0x02", "command": "send-frequency" }

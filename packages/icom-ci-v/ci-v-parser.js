@@ -30,11 +30,9 @@ function bcd2int(buffer) {
 // TODO: frequency decode does not check for how long the buffer should be
 function frequency_decoder(buffer, action) {
 	const obj = {}
-	if (buffer && buffer.length == 5) {
+	if (buffer && buffer.length) {
 		const field = action[2] ? action[2] : 'frequency';
 		obj[field] = bcd_reverse2int(buffer);	
-	} else {
-		obj['error'] = 'frequency decoding failed';
 	}
 
 	return obj;
@@ -325,12 +323,28 @@ function decode(buffer) {
 }
 
 function encode(msg) {
-	console.log('Encoding not implemented.');
-	if (!Buffer.isBuffer(msg)) {
-		console.log('message to be encoded is not a Buffer object');
+	// console.log('Encoding not implemented.');
+
+	const to_encode = [0xfe, 0xfe];	// header
+
+	if ('source' in msg) {
+		to_encode.push(parseInt(msg.source, 16) & 0xff);
 	}
 
-	return null;
+	if ('destination' in msg) {
+		to_encode.push(parseInt(msg.destination, 16) & 0xff);
+	}
+
+	if ('command_code' in msg) {
+		to_encode.push(parseInt(msg.command_code, 16));
+	}
+
+	if ('payload' in msg) {
+		to_encode.push(...Buffer.from(msg.payload, 'hex').values());
+	}
+
+	to_encode.push(0xfd);	// footer
+	return Buffer.from(to_encode);
 }
 
 module.exports = {

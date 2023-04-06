@@ -48,6 +48,37 @@ function parse_command(buffer) {
 	print('\n\n');
 }
 
+function encode_command(msg) {
+	if (!msg) {
+		return;
+	}
+
+	print(`# ${yellow}CI-V Command #${command_n}${normal}`);
+
+	if (ignore_types.includes(msg)) {
+		return;
+	}
+
+	if (program.opts().debug) {
+		print('\n');
+		print(msg);
+	}	
+
+	const encoded = civp.encode(msg);
+	if (encoded) {
+		print(` ${yellow}len=0x${encoded.length.toString(16)}${normal}\n`);
+	} else {
+		print(` ${red}failed${normal}\n`);
+	}
+
+	print(hexy.hexy(encoded));
+
+	const decoded = civp.decode(encoded);
+	print(decoded);
+	print('\n\n');
+}
+
+
 command_n = 0;
 
 async function parse_file(filename, start, end) {
@@ -55,8 +86,8 @@ async function parse_file(filename, start, end) {
     for await (const line of file.readLines()) {
 		command_n++;
 		if (start <= command_n && command_n < end) {
-			const buffer = Buffer.from(line.replace(/ /g, ''), 'hex');
-			parse_command(buffer);
+			const msg = JSON.parse(line);
+			encode_command(msg);
 		}
     }
 }
