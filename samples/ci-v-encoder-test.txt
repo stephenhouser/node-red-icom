@@ -5,3 +5,5 @@
 { "source": "0xa4", "destination": "0x02", "command_code": "03" }
 { "source": "0x01", "destination": 2, "command_code": "19", "payload": "00" }
 { "source": 1, "destination": "0x02", "command": "send-frequency" }
+{ "source": 1, "destination": "0x02", "command": "delta-tx-setting" }
+{ "source": 1, "destination": "0x02", "command": "select-vfo-a" }

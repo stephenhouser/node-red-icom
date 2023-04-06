@@ -123,7 +123,6 @@ function empty_decoder(buffer, action) {
 }
 
 const civ_command_tree = {
-//	0x00: ['send-frequency', (b) => ({'frequency': bcd_decoder(b)})],
 	0x00: ['send-frequency', frequency_decoder],
 	0x01: ['send-mode-data'],
 	0x02: ['read-band-edge'],
@@ -251,7 +250,7 @@ const civ_command_tree = {
 		0x02: ['transmit-frequency-monitor', bool_decoder],
 		0x03: ['transmit-frequency', frequency_decoder],
 	}],
-	0x21: ['', {
+	0x21: ['0x21', {
 		0x00: ['rit-frequency', rit_frequency_decoder],
 		0x01: ['rit-setting', bool_decoder],
 		0x02: ['delta-tx-setting', bool_decoder],
@@ -290,7 +289,7 @@ function command_decoder(buffer) {
 
 	// if we did not find a decoder, use default empty_decoder
 	if (!decoded.command) {
-		decoded = empty_decoder(buffer.slice(command_index));
+		decoded = empty_decoder(buffer.slice(buffer_idx));
 	}
 
 	decoded.command_code = command_code;
@@ -322,9 +321,28 @@ function decode(buffer) {
 	return decoded;
 }
 
-function encode(msg) {
-	// console.log('Encoding not implemented.');
+// returns array of [command, subcommand, ...]
+// recursive...
+function command_lookup(needle, haystack) {
+	for (let key in haystack) {
+		const [candidate, substack] = haystack[key];
 
+		if (typeof(substack) == 'object') {
+			const subkey = command_lookup(needle, substack);
+			if (subkey) {
+				return [parseInt(key), ...subkey];
+			}
+		}
+
+		if (candidate == needle) {
+			return [parseInt(key)];
+		}	
+	}
+
+	return null;
+}
+
+function encode(msg) {
 	const to_encode = [0xfe, 0xfe];	// header
 
 	if ('source' in msg) {
@@ -335,7 +353,15 @@ function encode(msg) {
 		to_encode.push(parseInt(msg.destination, 16) & 0xff);
 	}
 
-	if ('command_code' in msg) {
+	if ('command' in msg) {
+		const command_code = command_lookup(msg.command, civ_command_tree);
+		if (command_code) {
+			to_encode.push(...command_code);
+		} else {
+			console.log(`ERROR: Command '${msg.command}' not recognized.`);
+			return null;
+		}
+	} else if ('command_code' in msg) {
 		to_encode.push(parseInt(msg.command_code, 16));
 	}
 
@@ -344,6 +370,7 @@ function encode(msg) {
 	}
 
 	to_encode.push(0xfd);	// footer
+	// console.log(to_encode);
 	return Buffer.from(to_encode);
 }
 
