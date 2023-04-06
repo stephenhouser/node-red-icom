@@ -67,7 +67,6 @@ the `payload` if needed. NOTE: many commands don't need parameters, so the
 msg_proto3 = {
     source: 0x00,
     destination: 0x00,
-
     command: 'send-frequency',  // will translate command to command_code
     payload: buffer_string      // as needed
 };
@@ -87,7 +86,7 @@ msg_proto4 = {
     // one of command or command_code (from CI-V reference)
     command: 'send-frequency',  // will translate command to command code
     command_code: 0x00,         // overrides `command` if both given
-
+    
     // encoded fields as needed, varies based on command/subcommand
     frequency: 174000,
     status: 'on',
