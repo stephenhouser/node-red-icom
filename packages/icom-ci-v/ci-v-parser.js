@@ -27,17 +27,21 @@ function bcd2int(buffer) {
 	return parseInt(bcd);
 }
 
+// TODO: frequency decode does not check for how long the buffer should be
 function frequency_decoder(buffer, action) {
 	const obj = {}
-	if (buffer && buffer.length) {
+	if (buffer && buffer.length == 5) {
 		const field = action[2] ? action[2] : 'frequency';
 		obj[field] = bcd_reverse2int(buffer);	
+	} else {
+		obj['error'] = 'frequency decoding failed';
 	}
 
 	return obj;
 }
 
 // decodes BCD 0000 ~ 0255 <- in reverse order from above
+// TODO: bcd decode does not check for how long the buffer should be
 function bcd_decoder(buffer, action) {
 	const obj = {}
 	if (buffer && buffer.length) {
@@ -160,14 +164,13 @@ const civ_command_tree = {
 		0xd0: ['set-scan-resume-off'],
 		0xd3: ['set-scan-resume-on'],
 	}],
-	0x0f: ['split'],
-	// {
-	// 	0x00: ['split-off'],
-	// 	0x01: ['split-function'],
-	// 	0x10: ['simplex'],
-	// 	0x11: ['duplex-minus'],
-	// 	0x12: ['duplex-plus'],
-	// }],	
+	0x0f: ['split', {
+		0x00: ['split-off'],
+		0x01: ['split-function'],
+		0x10: ['simplex'],
+		0x11: ['duplex-minus'],
+		0x12: ['duplex-plus'],
+	}],	
 	0x10: ['tuning-step'],
 	0x11: ['attenuator'],
 	0x13: ['speech', {
@@ -298,18 +301,16 @@ function command_decoder(buffer) {
 
 function decode(buffer) {
 	if (!buffer || buffer.length < 6) {
-		// must have at least: header, destination, source, command, trailer
-		return decoded;
+		return null;	// not long enough to contain CI-V data
 	}
 
 	if (buffer.readUint16LE(0, true) != 0xfefe) {
-		// invalid header
-		return {};
+		return null;	// invalid header
 	}
 
 	if (buffer.readUint8((buffer.length - 1), true) != 0xfd) {
-		// invalid trailer
-		return {};
+		
+		return null;	// invalid trailer
 	}
 
 	const decoded = command_decoder(buffer.slice(4, (buffer.length - 1)));
@@ -325,6 +326,10 @@ function decode(buffer) {
 
 function encode(msg) {
 	console.log('Encoding not implemented.');
+	if (!Buffer.isBuffer(msg)) {
+		console.log('message to be encoded is not a Buffer object');
+	}
+
 	return null;
 }
 

@@ -18,8 +18,10 @@ module.exports = function(RED) {
 			const decoded = civ.decode(msg.payload);
 			if (decoded && send) {
 				msg.payload = decoded;
-				// msg.topic = decoded.command;
+				msg.topic = decoded.command;
 				send(msg);
+			} else {
+				this.error('Could not parse CI-V data on input')
 			}
 
 			if (done) {
