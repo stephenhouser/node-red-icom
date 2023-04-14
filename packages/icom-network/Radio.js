@@ -208,11 +208,7 @@ class ICOMNetworkChannel extends EventEmitter {
 
 		this.recv_sequence = msg.sequence + 1;
 		
-		if (msg.type == 'data' && msg.payload.length == 0) {
-			return;
-		}
-
-		console.log(`<${this.port} ${JSON.stringify(msg)}`);
+		// console.log(`<${this.port} ${JSON.stringify(msg)}`);
 		if (msg.type in this.waiting_queue) {
 			// console.log(`<${this.port} ${JSON.stringify(msg)}`);
 			const [resolve, reject] = this.waiting_queue[msg.type];
@@ -223,7 +219,7 @@ class ICOMNetworkChannel extends EventEmitter {
 			}
 		}
 		
-		//channel.emit('message', decoded);
+		this.emit('message', msg.payload);
 	}
 
 	disconnect() {
@@ -247,24 +243,66 @@ class ICOMControlChannel  extends EventEmitter {
 
 		return this.network.connect(host, port)
 			.then((results) => {
-				console.log('ICOMControlChannel::connect');
+				console.log(`CONTROL: connected`);
+
 				net.on('message', (msg) => {
-					console.log(msg);
+					if (!msg || msg.length == 0) {
+						return
+					}
+
+					console.log(`CONTROL MSG: ${JSON.stringify(msg)}`);
 				});
 
 				net.on('close', (msg) => {
-					console.log('closed');
+					console.log('CONTROL: closed');
 				});
 
 				net.on('error', (msg) => {
-					console.log(`ERROR: ${msg}`);
+					console.log(`CONTROL ERROR: ${msg}`);
 				})
 			})
 		;
 	}
 
-	send(msg) {
+	login(username, password) {
+		if (this.network.state != ConnectionStates.connected) {
+			return Promise.reject();
+		}
 
+		const login = {
+			type: 'request',
+			request: 'login',
+			username: 'ic-705',
+			password: 'flexradio',
+			program: 'archlinu-wfview',
+
+			// type_code: 1,
+			// request_code: 0,
+			// sequence: 48,
+			// length: 112,
+			// token_request: 27131,
+			// token: 0,
+		};
+
+		// Response is...
+		// payload: {
+		// 	length: 80,
+		// 	type_code: 2,
+		// 	request_code: 0,
+		// 	sequence: 48,
+		// 	token_request: 27131,
+		// 	token: 1800263078,
+		// 	authid: 0,
+		// 	error: 0,
+		// 	connection: 'FTTH',
+		// 	type: 'response',
+		// 	request: 'login'
+		//   },
+		return this.send(login, 'login');
+	}
+
+	send(msg, wait_for) {
+		return this.network.send(msg, wait_for);
 	}
 }
 

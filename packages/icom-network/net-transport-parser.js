@@ -91,6 +91,11 @@ class ICOMNetParser {
 		.buffer('payload', { readUntil: 'eof' })
 		;
 
+	dataEncoder = new binaryEncoder()
+		.nest(null, { type: this.baseEncoder })
+		.buffer('payload', { readUntil: 'eof' })
+		;
+
 	// array of datagrams to retransmit
 	retransmitParser = new binaryParser()
 		.array('datagrams', { type: new binaryParser().uint16(null), readUntil: 'eof' })
@@ -114,7 +119,8 @@ class ICOMNetParser {
 		.uint32('ping_id')
 		;
 
-	pingEncoder = this.baseEncoder
+	pingEncoder = new binaryEncoder()
+		.nest(null, { type: this.baseEncoder })
 		.uint8('reply')
 		.uint32('ping_id')
 		;
@@ -169,6 +175,10 @@ class ICOMNetParser {
 				encoder = this.pingEncoder;
 				break;
 
+			case this.messageType.data:
+				encoder = this.dataEncoder;
+				break;
+
 			case this.messageType.syn:
 			case this.messageType.syn_ack:
 			case this.messageType.ready:
@@ -178,6 +188,9 @@ class ICOMNetParser {
 		}
 
 		const encoded = encoder.encode(encode_msg);
+
+		// console.log(`ENCODED: len=${encoded.length}`);
+
 		return encoded;
     }
 

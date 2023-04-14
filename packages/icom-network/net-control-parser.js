@@ -212,7 +212,7 @@ class ICOMNetControlParser {
 
 	requestParser = new binaryParser()
 		.choice(null, {
-			tag: 'request',
+			tag: 'request_code',
 			defaultChoice: new binaryParser(),
 			choices: {
 				0x00: this.loginRequestParser,
@@ -280,6 +280,7 @@ class ICOMNetControlParser {
 		}
 
 		const decoded = this.parser.parse(buffer);
+
 		// add stringified version of the datagram type to the returned message
 		decoded.type = keyForValue(this.commandType, decoded.type_code);
 
