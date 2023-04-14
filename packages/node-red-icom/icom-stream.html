@@ -1,0 +1,49 @@
+<script type="text/javascript">
+    RED.nodes.registerType('flexradio-stream', {
+        category: 'flexradio',
+        color: '#06bcd8',
+        defaults: {
+            name: { value: '' },
+            radio: { value: '', type: 'flexradio-radio', required: true },
+            stream_type: { value: 'all', required: true },
+            stream: { value: '' }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'font-awesome/fa-volume-up',
+        label: function() {
+            return this.name || 'flexradio-stream';
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="flexradio-stream">
+    <div class="form-row">
+        <label for="node-input-radio"><i class="fa fa-globe"></i> FlexRadio</label>
+        <input type="text" id="node-input-radio" placeholder="FlexRadio">
+    </div>
+    <div class="form-row">
+        <label for="node-input-stream_type"><i class="fa fa-tasks"></i> Stream Type</label>
+        <select id="node-input-stream_type">
+            <option value="dynamic">Dynamic</option>
+            <option value="all">All</option>
+            <option value="panadapter">Panadapter</option>
+            <option value="waterfall">Waterfall</option>
+            <option value="opus">opus</option>
+            <option value="daxAudio">daxAudio</option>
+            <option value="daxReducedBw">daxReducedBw</option>
+            <option value="daxIq24">daxIq24</option>
+            <option value="daxIq48">daxIq48</option>
+            <option value="daxIq96">daxIq96</option>
+            <option value="daxIq192">daxIq192</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-stream"><i class="fa fa-tasks"></i> Stream</label>
+        <input type="text" id="node-input-stream" placeholder="">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>

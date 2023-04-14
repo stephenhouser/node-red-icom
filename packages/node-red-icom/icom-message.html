@@ -1,0 +1,61 @@
+<script type="text/javascript">
+    RED.nodes.registerType('icom-message', {
+        category: 'icom',
+        color: '#06bcd8',
+        defaults: {
+            name: { value: '' },
+            radio: { value: '', type: 'icom-radio', required: true },
+            client: { value: '' },
+            topic: { value: '', validate: RED.validators.typedInput('topic_type')},
+            topic_type: { value: 'mqtt', required: true },
+        },
+        inputs: 0,
+        outputs: 1,
+        icon: 'bridge.svg',
+        label: function() {
+            return this.name || 'icom-message';
+        },
+        oneditprepare: function() {
+            const mqtt_type = {
+                value: 'mqtt',
+                label: 'mqtt expression',
+                icon: 'fa fa-hashtag',
+                hasValue: true,
+                validate: function(value) {
+                    return true;
+                }
+            };
+            $("#node-input-topic").typedInput({
+                default: this.topicType || 'mqtt', 
+                types: ['str', mqtt_type, 're'],
+                typeField: '#node-input-topic_type'
+            });
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="icom-message">
+    <div class="form-row">
+        <label for="node-input-radio"><i class="fa fa-globe"></i> icom</label>
+        <input type="text" id="node-input-radio" placeholder="icom">
+    </div>
+    <div id="topic" class="form-row">
+        <label for="node-input-client"><i class="fa fa-tasks"></i> Client</label>
+        <select id="node-input-client">
+            <option value="all">All</option>
+            <option value="self_radio">Self + Radio</option>
+            <option value="self">Self Only</option>
+            <option value="radio">Radio Only</option>
+        </select>
+
+    </div>
+    <div id="topic" class="form-row">
+        <label for="node-input-topic"><i class="fa fa-tasks"></i> Topic</label>
+        <input type="text" id="node-input-topic" placeholder="Topic">
+        <input type="hidden" id="node-input-topic_type">
+    </div>
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>

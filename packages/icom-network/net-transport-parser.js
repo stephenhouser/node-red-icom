@@ -33,7 +33,7 @@
  */
 const binaryParser = require('binary-parser').Parser;
 // TODO: Implement encoding of net-transport
-// const binaryEncoder = require('binary-parser-encoder').Parser;
+const binaryEncoder = require('binary-parser-encoder').Parser;
 
 // returns key for enum value
 function keyForValue(enumType, value) {
@@ -66,6 +66,17 @@ class ICOMNetParser {
 		ready: 			0x06,	// are you ready, I am ready
 		ping: 			0x07,	// ping request and response
 	};
+
+	baseEncoder = new binaryEncoder()
+		.endianess('little')
+		.uint32('length')
+		.uint16('type_code')
+		.uint16('sequence')
+        .uint16('source_port')
+		.uint16('source_id')
+        .uint16('destination_port')
+        .uint16('destination_id')
+		;
 
 	// parses the peer id which (from a client) should include the UDP
 	// port the client is listening on. The radio does not seem to have 
@@ -103,14 +114,21 @@ class ICOMNetParser {
 		.uint32('ping_id')
 		;
 
+	pingEncoder = this.baseEncoder
+		.uint8('reply')
+		.uint32('ping_id')
+		;
+
 	// header for each datagram
 	baseParser = new binaryParser()
 		.endianess('little')
 		.uint32('length')
 		.uint16('type_code')
 		.uint16('sequence')
-        .nest('sender', { type: this.idParser })
-        .nest('receiver', { type: this.idParser })
+		.uint16('source_port')
+		.uint16('source_id')
+        .uint16('destination_port')
+        .uint16('destination_id')
 		;
 
 	// the main parser for decoding datagrams
@@ -132,7 +150,35 @@ class ICOMNetParser {
         ;
 
     encode(msg) {
-		console.log('ERROR: Encoding not implemented.');
+		const type_code = valueForKey(this.messageType, msg.type);
+
+		if (!type_code) {
+			console.log(`ERROR: No encoder for ${msg.type}`);
+			return null;
+		}
+
+		const encode_msg = {
+			...msg,
+			type_code: type_code
+		};
+
+		let encoder = this.baseEncoder;
+		switch (type_code) {
+			case this.messageType.ping:
+				encode_msg.length = 0x15;
+				encoder = this.pingEncoder;
+				break;
+
+			case this.messageType.syn:
+			case this.messageType.syn_ack:
+			case this.messageType.ready:
+			default:
+				encode_msg.length = 0x10;
+				break;		
+		}
+
+		const encoded = encoder.encode(encode_msg);
+		return encoded;
     }
 
     decode(buffer) {
